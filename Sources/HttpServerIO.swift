@@ -21,20 +21,18 @@ public class HttpServerIO {
     public func start(listenPort: in_port_t = 8080) throws {
         stop()
         listenSocket = try Socket.tcpSocketForListen(listenPort)
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0)) {
-            while let socket = try? self.listenSocket.acceptClientSocket() {
-                self.lock(self.clientSocketsLock) {
-                    self.clientSockets.insert(socket)
-                }
-                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), {
-                    self.handleConnection(socket)
-                    self.lock(self.clientSocketsLock) {
-                        self.clientSockets.remove(socket)
-                    }
-                })
+        while let socket = try? self.listenSocket.acceptClientSocket() {
+            self.lock(self.clientSocketsLock) {
+                self.clientSockets.insert(socket)
             }
-            self.stop()
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), {
+                self.handleConnection(socket)
+                self.lock(self.clientSocketsLock) {
+                    self.clientSockets.remove(socket)
+                }
+            })
         }
+        self.stop()
     }
     
     public func stop() {
